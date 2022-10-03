@@ -8,7 +8,7 @@ format:
     self-contained: true
 ---
 
-This page shows you how to download data with the [STATcubeR](https://github.com/statistikat/STATcubeR/ "github STATcubeR") package and visualize the data with ggplot and [Rdeck](https://github.com/qfes/rdeck "github Rdeck") package.
+This page shows you how to download data with the [STATcubeR](https://github.com/statistikat/STATcubeR/ "github STATcubeR") package and visualize the data with ggplot and [Rdeck](https://github.com/qfes/rdeck "github Rdeck") packages.
 
 ## Packages
 
@@ -43,7 +43,7 @@ library(sf)
 
 We want to compare two years of the Austrian population for each of the 2117 communes, for each sex (m/f) and each age group (0 to 99).
 
-```{r loadPopData, cache=TRUE}
+```{r loadPopData}
 popDataFile = "data/popData.rdata"
 # check if the files are available on your disk
 if(!file.exists(popDataFile)){
@@ -59,42 +59,69 @@ paste('dim is', paste(dim(pop2002$data), collapse = ', '))
 
 ### Load commune shape file
 
-Load the shape file for all Austrian communes from [data.statistik.gv.at](https://data.statistik.gv.at/web/meta.jsp?dataset=OGDEXT_GEM_1), simplify them with `st_simplify()` (faster rendering) and plot them.
+Load the two shape files from [data catalog of Statistik Austria](https://data.statistik.gv.at/web/catalog.jsp#collapse4) 
 
-```{r downloadCommuneShapeAndUnzip, cache=TRUE}
-communeUrl = 'https://data.statistik.gv.at/data/OGDEXT_GEM_1_STATISTIK_AUSTRIA_20220101.zip'
-communeZipPath = 'data/OGDEXT_GEM_1_STATISTIK_AUSTRIA_20220101.zip'
-communeShpDir = file.path('data', 'OGDEXT_GEM_1_STATISTIK_AUSTRIA_20220101')
-communeShpPath = file.path(communeShpDir, 'STATISTIK_AUSTRIA_GEM_20220101.shp')
-communeShpRdata = file.path('data', 'communeShp.rdata')
+* communes [data.statistik.gv.at](https://data.statistik.gv.at/web/meta.jsp?dataset=OGDEXT_GEM_1) 
+* and NUTS2 regions in austria [data.statistik.gv.at](https://data.statistik.gv.at/web/meta.jsp?dataset=OGDEXT_NUTS_1)
 
-# unzip file if shp does not exist
-if(!file.exists(communeShpPath)){
-  # download zip-file if it does not exist
-  if(!file.exists(communeZipPath)){
-    download.file(url = communeUrl
-                  , destfile = communeZipPath)
+We also simplify the shape-files with `st_simplify()` (faster rendering and smaller object size) and plot them.
+
+```{r downloadCommuneShapeAndUnzip}
+downloadUnZipShp = function(url, shpFile, rDataFile){
+  zipPath = file.path('data', basename(url))
+  shpDir = file.path('data', tools::file_path_sans_ext(basename(url)))
+  shpPath = file.path(shpDir, shpFile)
+  shpRdata = file.path('data', rDataFile)
+  # unzip file if shp does not exist
+  if(!file.exists(shpPath)){
+    # download zip-file if it does not exist
+    if(!file.exists(zipPath)){
+      download.file(url = url
+                    , destfile = zipPath)
+    }
+    # unzip file if not unzipped
+    utils::unzip(zipfile = zipPath
+                 , exdir = shpDir)
   }
-  # unzip file if not unzipped
-  utils::unzip(zipfile = communeZipPath
-               , exdir = communeShpDir)
 }
+
+createLoadShp = function(shpRdata, shpPath, shpObjName){
+  if(!file.exists(shpRdata)){
+    shp = sf::st_read(dsn = shpPath)
+    # simplify
+    shp = sf::st_simplify(x = shp, dTolerance = 20)
+    assign(shpObjName, shp) # object should not be names shp in the saved file
+    save(list = shpObjName, file = shpRdata)
+  } else {
+    load(file = shpRdata)
+  }
+  get(shpObjName)
+}
+
+loadShp = function(url, shpFile, rDataFile){
+  shpDir = file.path('data', tools::file_path_sans_ext(basename(url)))
+  shpPath = file.path(shpDir, shpFile)
+  shpRdata = file.path('data', rDataFile)
+  shpObjName = tools::file_path_sans_ext(rDataFile)
+  
+  downloadUnZipShp(url = url, shpFile = shpFile, rDataFile = rDataFile)
+  createLoadShp(shpRdata = shpRdata, shpPath = shpPath, shpObjName = shpObjName)
+}
+
+# commune shp
+communeShp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_GEM_1_STATISTIK_AUSTRIA_20220101.zip'
+                 , shpFile = 'STATISTIK_AUSTRIA_GEM_20220101.shp'
+                 , rDataFile = 'communeShp.rdata')
+# nuts3 shp
+nuts2shp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_NUTS_1_STATISTIK_AUSTRIA_NUTS2_20160101.zip'
+                 , shpFile = 'STATISTIK_AUSTRIA_NUTS2_20160101.shp'
+                 , rDataFile = 'nuts2shp.rdata')
 ```
 
-```{r loadCommuneShpToSf, cache=TRUE}
-# create communeShp if needed
-if(!file.exists(communeShpRdata)){
-  communeShp = sf::st_read(dsn = communeShpPath)
-  # simplify
-  communeShp = sf::st_simplify(x = communeShp, dTolerance = 10)
-  save(communeShp, file = communeShpRdata)
-} else {
-  load(file = communeShpRdata)
-}
-# view data
-communeShp
+```{r loadCommuneShpToSf}
 # simple plotting
-plot(communeShp$geometry)
+plot(nuts2shp$geometry, lwd = 1.5, main='Austrian communes and NUTS2 regions')
+plot(communeShp$geometry, lwd = 0.5, add = TRUE)
 ```
 
 ## Prepare population data
@@ -122,7 +149,7 @@ tidyPop = function(data){
 
 Convert both years to the new format.
 
-```{r convertFromStataToDataTable, cache=TRUE}
+```{r convertFromStataToDataTable}
 pop2002.dt = tidyPop(pop2002$tabulate())
 pop2021.dt = tidyPop(pop2021$tabulate())
 head(pop2002.dt)
@@ -200,6 +227,7 @@ getColors = function(sf){
 ```{r firstPlot, cache=TRUE}
 ggplot() +
   geom_sf(data = communeChangeShp, aes(fill = cut), color = NA) +
+  geom_sf(data = nuts2shp, color = 'black', fill = NA) +
   scale_fill_manual(values = getColors(communeChangeShp), name = 'pop rate') +
   theme_void()
 ```
@@ -213,10 +241,15 @@ In our sf-object we have POLYGONs and MULTIPOLYGONs in , but `fdeck()` can not m
 The crs of communeChangeShp is *`r sf::st_crs(communeChangeShp)$input`*. To convert to the WGS84-crs we use the function `sf::st_transform()`.
 
 ```{r tidySfForRdeck}
-# set crs
-communeChangeShp = st_transform(communeChangeShp, crs = st_crs(4326))
-# change all geometries to MULTIPOLYGON
-st_geometry(communeChangeShp) = sf::st_cast(st_geometry(communeChangeShp), "MULTIPOLYGON")
+tidySfForRdeck = function(sf){
+  # set crs
+  sf = st_transform(sf, crs = st_crs(4326))
+  # change all geometries to MULTIPOLYGON
+  st_geometry(sf) = sf::st_cast(st_geometry(sf), "MULTIPOLYGON")
+  sf
+}
+communeChangeShp = tidySfForRdeck(communeChangeShp)
+nuts2shp = tidySfForRdeck(nuts2shp)
 ```
 
 ```{r rdeckMap, warning=FALSE}
@@ -234,6 +267,14 @@ rdeck(map_style = NULL
                                           , palette = getColors(communeChangeShp))
     , pickable = TRUE
     , tooltip = c(name, change)
+  ) |>
+  add_polygon_layer(
+    data = nuts2shp
+    , name = 'nuts2 areas'
+    , get_polygon = geometry
+    , get_line_width = 200
+    , get_line_color = '#010101'
+    , filled = FALSE
   )
 ```
 
