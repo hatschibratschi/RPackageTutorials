@@ -66,12 +66,10 @@ Load the two shape files from [data catalog of Statistik Austria](https://data.s
 
 We also simplify the shape-files with `st_simplify()` (faster rendering and smaller object size) and plot them.
 
-```{r downloadCommuneShapeAndUnzip}
-downloadUnZipShp = function(url, shpFile, rDataFile){
-  zipPath = file.path('data', basename(url))
-  shpDir = file.path('data', tools::file_path_sans_ext(basename(url)))
-  shpPath = file.path(shpDir, shpFile)
-  shpRdata = file.path('data', rDataFile)
+```{r}
+#| label: downloadCommuneShapeAndUnzip
+#| code-fold: true
+downloadUnZipShp = function(url, shpPath, zipPath, shpDir){
   # unzip file if shp does not exist
   if(!file.exists(shpPath)){
     # download zip-file if it does not exist
@@ -100,11 +98,14 @@ createLoadShp = function(shpRdata, shpPath, shpObjName){
 
 loadShp = function(url, shpFile, rDataFile){
   shpDir = file.path('data', tools::file_path_sans_ext(basename(url)))
+  zipPath = file.path('data', basename(url))
   shpPath = file.path(shpDir, shpFile)
   shpRdata = file.path('data', rDataFile)
   shpObjName = tools::file_path_sans_ext(rDataFile)
   
-  downloadUnZipShp(url = url, shpFile = shpFile, rDataFile = rDataFile)
+  if(!file.exists(shpRdata)){
+    downloadUnZipShp(url, shpPath, zipPath, shpDir)
+  }
   createLoadShp(shpRdata = shpRdata, shpPath = shpPath, shpObjName = shpObjName)
 }
 
@@ -232,7 +233,7 @@ ggplot() +
   theme_void()
 ```
 
-### interactive rdeck map
+### interactive map with rdeck
 
 For `rdeck()` all geometry types must be equal and the crs must be WGS84.
 

@@ -6,6 +6,9 @@ format:
 ---
 
 ```{r}
+#| label: createPlotsObject
+#| code-fold: true
+#| message: false
 library(tidyverse)
 
 data <- iris %>% as_tibble()
@@ -30,6 +33,7 @@ plots <- data %>%
 #| results: asis
 #| fig-width: 14
 #| fig-height: 6
+#| fig-cap: 'Iris Species'
 
 iwalk(plots, ~ {
   cat('## ', .y, '\n\n')
