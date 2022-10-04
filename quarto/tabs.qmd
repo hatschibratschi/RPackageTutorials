@@ -1,0 +1,41 @@
+---
+title: "Panel tabs"
+format:
+  html:
+    self-contained: true
+---
+
+```{r}
+library(tidyverse)
+
+data <- iris %>% as_tibble()
+
+plots <- data %>%
+  group_nest(Species) %>% 
+  deframe() %>% 
+  map(., ~ {
+    ggplot(.x, aes(x = Sepal.Length, y = Sepal.Width)) + 
+      geom_point() +
+      theme_bw(
+        base_size = 18 # to increase the size of the plot elements
+      )
+  }) 
+
+```
+
+# Iris Plots
+
+::: panel-tabset
+```{r}
+#| results: asis
+#| fig-width: 14
+#| fig-height: 6
+
+iwalk(plots, ~ {
+  cat('## ', .y, '\n\n')
+  print(.x)
+  cat('\n\n')
+})
+
+```
+:::
