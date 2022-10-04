@@ -88,7 +88,7 @@ createLoadShp = function(shpRdata, shpPath, shpObjName){
     shp = sf::st_read(dsn = shpPath)
     # simplify
     shp = sf::st_simplify(x = shp, dTolerance = 20)
-    assign(shpObjName, shp) # object should not be names shp in the saved file
+    assign(shpObjName, shp) # object should not be named 'shp' in the saved file
     save(list = shpObjName, file = shpRdata)
   } else {
     load(file = shpRdata)
