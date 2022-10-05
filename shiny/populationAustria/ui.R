@@ -3,23 +3,17 @@ library(rdeck)
 
 source('helper.R')
 
-shinyUI(fluidPage(
-
-    titlePanel("Austrian population change"),
-
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("years",
-                        "Select the years to compare:",
-                        min = 2002,
-                        max = 2021,
-                        value = c(2001, 2021))
-        ),
-
-        mainPanel(
-            #plotOutput("distPlot")
-            rdeckOutput("distPlot")
-        )
-        
+shinyUI = fillPage(
+  rdeckOutput("map", height = "100%"),
+  absolutePanel(
+    top = 10, left = 10,
+    sliderInput("years"
+                , "Select the years to compare:"
+                , min = 2002
+                , max = 2021
+                , value = c(2002, 2021)
+                , width = '500px'
+                , sep = ''
     )
-))
+  )
+)

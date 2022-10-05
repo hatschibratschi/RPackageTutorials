@@ -1,3 +1,57 @@
+# objects -----------------------------------------------------------------
+# maps
+load('data/maps/communeShp.rdata') # communeShp
+load('data/maps/nuts2shp.rdata') # nuts2shp
+
+polygonLayerId = uuid::UUIDgenerate()
+
+# functions ---------------------------------------------------------------
+map = function(){
+  year1 = 2002 # input$years[1]
+  year2 = 2021 # input$years[2]
+  
+  # get data
+  pop1 = getPopulationData(year1)
+  pop2 = getPopulationData(year2)
+  
+  print('pop and area...')
+  pop = popChange(pop1, pop2)
+  pop = getAreaData(pop, communeShp, data.id = 'gkz', sf.id = 'id')
+  
+  print('tidy shps...')
+  pop = tidySfForRdeck(pop)
+  nuts2shp = tidySfForRdeck(nuts2shp)
+  
+  pop$change = paste0(round(pop$diff, 2) * 100, '%')
+  
+  print('plot...')
+  options(warn=-1)
+  p = rdeck(map_style = NULL
+            , initial_bounds = sf::st_bbox(pop)
+            , theme = "light") |>
+    add_polygon_layer(
+        id = polygonLayerId
+      , name = 'Population change'
+      , data = pop
+      , get_polygon = geometry
+      , get_line_width = 100
+      , get_line_color = '#b1b1b1'
+      , get_fill_color = scale_color_category(col = 'cut'
+                                              , palette = getColors(pop))
+      , pickable = TRUE
+      , tooltip = c(name, change)
+    ) |>
+    add_polygon_layer(
+      data = nuts2shp
+      , name = 'nuts2 areas'
+      , get_polygon = geometry
+      , get_line_width = 200
+      , get_line_color = '#010101'
+      , filled = FALSE
+    )
+  options(warn=0)
+  p
+}
 
 getPopulationData = function(year){
   dataFolder = file.path('data', 'population')
