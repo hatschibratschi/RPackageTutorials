@@ -1,4 +1,5 @@
 library(shiny)
+library(rdeck)
 
 source('helper.R')
 
@@ -16,7 +17,9 @@ shinyUI(fluidPage(
         ),
 
         mainPanel(
-            plotOutput("distPlot")
+            #plotOutput("distPlot")
+            rdeckOutput("distPlot")
         )
+        
     )
 ))

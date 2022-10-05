@@ -84,3 +84,10 @@ getColors = function(sf){
   col
 }
 
+tidySfForRdeck = function(sf){
+  # set crs
+  sf = st_transform(sf, crs = st_crs(4326))
+  # change all geometries to MULTIPOLYGON
+  st_geometry(sf) = sf::st_cast(st_geometry(sf), "MULTIPOLYGON")
+  sf
+}
