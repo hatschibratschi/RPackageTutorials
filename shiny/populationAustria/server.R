@@ -13,6 +13,14 @@ shinyServer(function(input, output) {
     map()
   })
   
+  newRegion = reactive({
+    region = input$region
+    print(paste('region', region, 'selected'))
+    shp = get(input$region) # get object named after 'region'. eg nuts2shp
+    shp = tidySfForRdeck(shp)
+    shp
+  })
+  
   newData <- reactive({
     year1 = input$years[1]
     year2 = input$years[2]
@@ -27,16 +35,16 @@ shinyServer(function(input, output) {
     
     print('tidy shps...')
     pop = tidySfForRdeck(pop)
-    nuts2shp = tidySfForRdeck(nuts2shp)
-    
+
     pop$change = paste0(round(pop$diff, 2) * 100, '%')
     pop
   })
+  
   observe({
     pop = newData()
     rdeck_proxy("map") |>
       update_polygon_layer(
-        id = polygonLayerId
+        id = communeLayerId
         , name = paste('Pop', input$years[1], input$years[2])
         , data = pop
         , get_polygon = geometry
@@ -46,6 +54,15 @@ shinyServer(function(input, output) {
                                                 , palette = getColors(pop))
         , pickable = TRUE
         , tooltip = c(name, change)
+      )|>
+      add_polygon_layer(
+        id = regionLayerId
+        , data = newRegion()
+        , name = 'regions'
+        , get_polygon = geometry
+        , get_line_width = 200
+        , get_line_color = '#010101'
+        , filled = FALSE
       )
   })
 })

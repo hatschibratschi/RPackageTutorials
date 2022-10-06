@@ -1,7 +1,8 @@
 rm(list = ls())
 
 # project variables  ------------------------------------------------------
-polygonLayerId = uuid::UUIDgenerate()
+communeLayerId = uuid::UUIDgenerate()
+regionLayerId = uuid::UUIDgenerate()
 
 # functions ---------------------------------------------------------------
 downloadUnZipShp = function(url, shpPath, zipPath, shpDir){
@@ -9,10 +10,12 @@ downloadUnZipShp = function(url, shpPath, zipPath, shpDir){
   if(!file.exists(shpPath)){
     # download zip-file if it does not exist
     if(!file.exists(zipPath)){
+      print(paste('download file', url))
       download.file(url = url
                     , destfile = zipPath)
     }
     # unzip file if not unzipped
+    print(paste('unzip file', zipPath))
     utils::unzip(zipfile = zipPath
                  , exdir = shpDir)
     file.remove(zipPath)
@@ -21,13 +24,16 @@ downloadUnZipShp = function(url, shpPath, zipPath, shpDir){
 
 createLoadShp = function(shpRdata, shpPath, shpObjName, shpDir){
   if(!file.exists(shpRdata)){
+    print(paste('read shape file', shpPath))
     shp = sf::st_read(dsn = shpPath)
+    names(shp) = tolower(names(shp))
     # simplify
     shp = sf::st_simplify(x = shp, dTolerance = 20)
     assign(shpObjName, shp) # object should not be named 'shp' in the saved file
     save(list = shpObjName, file = shpRdata)
     unlink(x = shpDir, recursive = TRUE)
   } else {
+    print(paste('load rdata with shape', shpRdata))
     load(file = shpRdata)
   }
   get(shpObjName)
@@ -50,10 +56,14 @@ loadShp = function(url, shpFile, rDataFile){
 communeShp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_GEM_1_STATISTIK_AUSTRIA_20220101.zip'
                      , shpFile = 'STATISTIK_AUSTRIA_GEM_20220101.shp'
                      , rDataFile = 'communeShp.rdata')
-# nuts3 shp
+# nuts2 shp
 nuts2shp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_NUTS_1_STATISTIK_AUSTRIA_NUTS2_20160101.zip'
                    , shpFile = 'STATISTIK_AUSTRIA_NUTS2_20160101.shp'
                    , rDataFile = 'nuts2shp.rdata')
+# district shp
+districtShp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_POLBEZ_1_STATISTIK_AUSTRIA_20220101.zip'
+                   , shpFile = 'STATISTIK_AUSTRIA_POLBEZ_20220101.shp'
+                   , rDataFile = 'districtShp.rdata')
 
 map = function(){
   year1 = 2002 # input$years[1]
@@ -79,7 +89,7 @@ map = function(){
             , initial_bounds = sf::st_bbox(pop)
             , theme = "light") |>
     add_polygon_layer(
-        id = polygonLayerId
+        id = communeLayerId
       , name = 'Population change'
       , data = pop
       , get_polygon = geometry
@@ -91,8 +101,9 @@ map = function(){
       , tooltip = c(name, change)
     ) |>
     add_polygon_layer(
-      data = nuts2shp
-      , name = 'nuts2 areas'
+        id = regionLayerId
+      , data = nuts2shp
+      , name = 'regions'
       , get_polygon = geometry
       , get_line_width = 200
       , get_line_color = '#010101'
@@ -199,3 +210,14 @@ tidySfForRdeck = function(sf){
   st_geometry(sf) = sf::st_cast(st_geometry(sf), "MULTIPOLYGON")
   sf
 }
+
+
+# test --------------------------------------------------------------------
+if (FALSE){
+  load(file = 'shiny/populationAustria/data/maps/districtShp.rdata')
+  load(file = 'shiny/populationAustria/data/maps/nuts2shp.rdata')
+  districtShp
+  nuts2shp
+}
+
+
