@@ -1,11 +1,60 @@
-# objects -----------------------------------------------------------------
-# maps
-load('data/maps/communeShp.rdata') # communeShp
-load('data/maps/nuts2shp.rdata') # nuts2shp
+rm(list = ls())
 
+# project variables  ------------------------------------------------------
 polygonLayerId = uuid::UUIDgenerate()
 
 # functions ---------------------------------------------------------------
+downloadUnZipShp = function(url, shpPath, zipPath, shpDir){
+  # unzip file if shp does not exist
+  if(!file.exists(shpPath)){
+    # download zip-file if it does not exist
+    if(!file.exists(zipPath)){
+      download.file(url = url
+                    , destfile = zipPath)
+    }
+    # unzip file if not unzipped
+    utils::unzip(zipfile = zipPath
+                 , exdir = shpDir)
+    file.remove(zipPath)
+  }
+}
+
+createLoadShp = function(shpRdata, shpPath, shpObjName, shpDir){
+  if(!file.exists(shpRdata)){
+    shp = sf::st_read(dsn = shpPath)
+    # simplify
+    shp = sf::st_simplify(x = shp, dTolerance = 20)
+    assign(shpObjName, shp) # object should not be named 'shp' in the saved file
+    save(list = shpObjName, file = shpRdata)
+    unlink(x = shpDir, recursive = TRUE)
+  } else {
+    load(file = shpRdata)
+  }
+  get(shpObjName)
+}
+
+loadShp = function(url, shpFile, rDataFile){
+  shpDir = file.path('data', 'maps', tools::file_path_sans_ext(basename(url)))
+  zipPath = file.path('data', 'maps', basename(url))
+  shpPath = file.path(shpDir, shpFile)
+  shpRdata = file.path('data', 'maps', rDataFile)
+  shpObjName = tools::file_path_sans_ext(rDataFile)
+  
+  if(!file.exists(shpRdata)){
+    downloadUnZipShp(url, shpPath, zipPath, shpDir)
+  }
+  createLoadShp(shpRdata, shpPath, shpObjName, shpDir)
+}
+
+# commune shp
+communeShp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_GEM_1_STATISTIK_AUSTRIA_20220101.zip'
+                     , shpFile = 'STATISTIK_AUSTRIA_GEM_20220101.shp'
+                     , rDataFile = 'communeShp.rdata')
+# nuts3 shp
+nuts2shp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_NUTS_1_STATISTIK_AUSTRIA_NUTS2_20160101.zip'
+                   , shpFile = 'STATISTIK_AUSTRIA_NUTS2_20160101.shp'
+                   , rDataFile = 'nuts2shp.rdata')
+
 map = function(){
   year1 = 2002 # input$years[1]
   year2 = 2021 # input$years[2]
