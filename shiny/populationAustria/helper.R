@@ -25,7 +25,7 @@ map = function(){
   pop$change = paste0(round(pop$diff, 2) * 100, '%')
   
   print('plot...')
-  options(warn=-1)
+  options(warn=-1) # disable warning for api-key
   p = rdeck(map_style = NULL
             , initial_bounds = sf::st_bbox(pop)
             , theme = "light") |>
@@ -53,8 +53,15 @@ map = function(){
   p
 }
 
+createFolder = function(p){
+  if(!file.exists(p)){
+    dir.create(p, recursive = TRUE)
+  }
+}
+
 getPopulationData = function(year){
   dataFolder = file.path('data', 'population')
+  createFolder(dataFolder)
   dataFile = file.path(dataFolder, paste0('pop', year, '.rdata'))
   dataObjName = paste0('pop', year)
   
@@ -78,7 +85,7 @@ getPopulationData = function(year){
     data = data[,.(time, gkz, pop)]
     
     # save data
-    assign(dataObjName, data) # object should not be named 'shp' in the saved file
+    assign(dataObjName, data) # object should not be named 'data' in the saved file
     save(list = dataObjName, file = dataFile)
   } else {
     print(paste('load data for', year, 'from disk'))
@@ -86,8 +93,6 @@ getPopulationData = function(year){
   }
   get(dataObjName)
 }
-# pop1 = getPopulationData(2002)
-# pop2 = getPopulationData(2021)
 
 popChange = function(pop1, pop2){
   

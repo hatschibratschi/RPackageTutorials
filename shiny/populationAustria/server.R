@@ -5,6 +5,8 @@ library(rdeck)
 library(lubridate)
 library(ggplot2)
 
+#options(shiny.port = 5445)
+
 shinyServer(function(input, output) {
   
   output$map <- renderRdeck({ # renderPlot
@@ -35,7 +37,7 @@ shinyServer(function(input, output) {
     rdeck_proxy("map") |>
       update_polygon_layer(
         id = polygonLayerId
-        , name = 'Population change'
+        , name = paste('Pop', input$years[1], input$years[2])
         , data = pop
         , get_polygon = geometry
         , get_line_width = 100
