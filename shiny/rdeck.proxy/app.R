@@ -38,9 +38,8 @@ ui <- fillPage(
 
 # server ------------------------------------------------------------------
 server <- function(input, output, session) {
+  
   output$map <- renderRdeck({
-    #c = get_clicked_coordinates('map') # map refreshes, maybe reactive problem !?
-    #print(c)
     map
   })
   
@@ -49,7 +48,15 @@ server <- function(input, output, session) {
       filter(value >= input$range[1] & value <= input$range[2])
   })
   
+  checkClick = reactive({
+    o = get_clicked_object('map')
+    print(sapply(o, eval))
+    l = get_clicked_coordinates('map')
+    print(sapply(l, eval))
+  })
+  
   observe({
+    checkClick()
     rdeck_proxy("map") %>%
       add_h3_hexagon_layer(
         id = "h3_hexagon",
