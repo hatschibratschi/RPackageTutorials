@@ -3,7 +3,6 @@ library(data.table)
 library(sf)
 library(rdeck)
 library(lubridate)
-library(ggplot2)
 
 #options(shiny.port = 5445)
 
