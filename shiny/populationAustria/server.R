@@ -24,13 +24,28 @@ shinyServer(function(input, output) {
     year1 = input$years[1]
     year2 = input$years[2]
     
+    level = input$level
+    print(paste('level', level, 'selected'))
+    levelShp = NULL
+    if (level == 'state')
+      levelShp = get('nuts2shp')
+    if (level == 'district')
+      levelShp = get('districtShp')
+    if (level == 'commune')
+      levelShp = get('communeShp')
+    
     # get data
-    pop1 = getPopulationData(year1)
-    pop2 = getPopulationData(year2)
+    pop1 = getPopulationData(year1, level)
+    pop2 = getPopulationData(year2, level)
     
     print('pop and area...')
     pop = popChange(pop1, pop2)
-    pop = getAreaData(pop, communeShp, data.id = 'gkz', sf.id = 'id')
+    # order nuts2Shp by name and create new id-col with 1:n
+    if(level == 'state'){
+      levelShp = levelShp[order(levelShp$name),]
+      levelShp$id = 1:nrow(levelShp)
+    }
+    pop = getAreaData(pop, levelShp, data.id = 'id', sf.id = 'id', breakSize = 1/input$breakSize)
     
     print('tidy shps...')
     pop = tidySfForRdeck(pop)

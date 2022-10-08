@@ -52,19 +52,6 @@ loadShp = function(url, shpFile, rDataFile){
   createLoadShp(shpRdata, shpPath, shpObjName, shpDir)
 }
 
-# commune shp
-communeShp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_GEM_1_STATISTIK_AUSTRIA_20220101.zip'
-                     , shpFile = 'STATISTIK_AUSTRIA_GEM_20220101.shp'
-                     , rDataFile = 'communeShp.rdata')
-# nuts2 shp
-nuts2shp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_NUTS_1_STATISTIK_AUSTRIA_NUTS2_20160101.zip'
-                   , shpFile = 'STATISTIK_AUSTRIA_NUTS2_20160101.shp'
-                   , rDataFile = 'nuts2shp.rdata')
-# district shp
-districtShp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_POLBEZ_1_STATISTIK_AUSTRIA_20220101.zip'
-                   , shpFile = 'STATISTIK_AUSTRIA_POLBEZ_20220101.shp'
-                   , rDataFile = 'districtShp.rdata')
-
 map = function(){
   year1 = 2002 # input$years[1]
   year2 = 2021 # input$years[2]
@@ -75,7 +62,7 @@ map = function(){
   
   print('pop and area...')
   pop = popChange(pop1, pop2)
-  pop = getAreaData(pop, communeShp, data.id = 'gkz', sf.id = 'id')
+  pop = getAreaData(pop, communeShp, data.id = 'id', sf.id = 'id')
   
   print('tidy shps...')
   pop = tidySfForRdeck(pop)
@@ -86,7 +73,7 @@ map = function(){
   print('plot...')
   options(warn=-1) # disable warning for api-key
   p = rdeck(map_style = NULL
-            , initial_bounds = sf::st_bbox(pop)
+            , initial_bounds = sf::st_bbox(st_buffer(nuts2shp, 25000))
             , theme = "light") |>
     add_polygon_layer(
         id = communeLayerId
@@ -119,7 +106,7 @@ createFolder = function(p){
   }
 }
 
-getPopulationData = function(year){
+getPopulationData = function(year, level = 'commune'){
   dataFolder = file.path('data', 'population')
   createFolder(dataFolder)
   dataFile = file.path(dataFolder, paste0('pop', year, '.rdata'))
@@ -151,22 +138,35 @@ getPopulationData = function(year){
     print(paste('load data for', year, 'from disk'))
     load(file = dataFile)
   }
-  get(dataObjName)
+  # set aggregation level
+  d = get(dataObjName)
+  if (level == 'commune'){
+    setnames(d, 'gkz', 'id')
+  } else if (level == 'district'){
+    # set new id -> districtId eg. 101, 102
+    d[,id := round(d$gkz / 100)]
+    d = d[,.(pop = sum(pop)), by = .(time, id)]
+  } else if (level == 'state'){
+    # set new id -> stateId eg. 1, 2 (not nuts2 ids. these must be changed)
+    d[,id := round(d$gkz / 10000)]
+    d = d[,.(pop = sum(pop)), by = .(time, id)]
+  }
+  print(paste('return getPopulationData for', level))
+  print(head(d))
+  d
 }
 
 popChange = function(pop1, pop2){
   
-  # pop1Year = min(year(pop1$time))
-  # pop2Year = min(year(pop2$time))
-
-  popChange = merge(pop1[,.(gkz, pop1 = pop)]
-                    , pop2[,.(gkz, pop2 = pop)]
-                    , all.x = TRUE)
-  # get codes for district and federal states from gkz for later use
-  popChange[, `:=` (  district = floor(gkz / 100)
-                      , federalstate = floor(gkz / 10000))]
+  print('head pop1 and pop2')
+  print(head(pop1))
+  print(head(pop2))
   
-  communeChange = popChange[,.(gkz, pop1, pop2)][,diff := (pop2 - pop1) / pop1][]
+  popChange = merge(pop1[,.(id, pop1 = pop)]
+                    , pop2[,.(id, pop2 = pop)]
+                    , all.x = TRUE)
+
+  communeChange = popChange[,.(id, pop1, pop2)][,diff := (pop2 - pop1) / pop1][]
   communeChange
 }
 
@@ -211,13 +211,47 @@ tidySfForRdeck = function(sf){
   sf
 }
 
+# load data ---------------------------------------------------------------
+# commune shp
+communeShp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_GEM_1_STATISTIK_AUSTRIA_20220101.zip'
+                     , shpFile = 'STATISTIK_AUSTRIA_GEM_20220101.shp'
+                     , rDataFile = 'communeShp.rdata')
+# nuts2 shp
+nuts2shp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_NUTS_1_STATISTIK_AUSTRIA_NUTS2_20160101.zip'
+                   , shpFile = 'STATISTIK_AUSTRIA_NUTS2_20160101.shp'
+                   , rDataFile = 'nuts2shp.rdata')
+# district shp
+districtShp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_POLBEZ_1_STATISTIK_AUSTRIA_20220101.zip'
+                      , shpFile = 'STATISTIK_AUSTRIA_POLBEZ_20220101.shp'
+                      , rDataFile = 'districtShp.rdata')
 
 # test --------------------------------------------------------------------
 if (FALSE){
+  getwd()
+  setwd('../..')
+  load(file = 'shiny/populationAustria/data/maps/communeShp.rdata')
+  communeShp
   load(file = 'shiny/populationAustria/data/maps/districtShp.rdata')
-  load(file = 'shiny/populationAustria/data/maps/nuts2shp.rdata')
   districtShp
+  load(file = 'shiny/populationAustria/data/maps/nuts2shp.rdata')
   nuts2shp
+  plot(st_buffer(nuts2shp$geometry, 50000)) # dist in meters
+  plot(nuts2shp$geometry, add = TRUE)
+  st_bbox(st_buffer(nuts2shp, 0))
+  st_bbox(nuts2shp)
+  
+  
+  setwd('shiny/populationAustria/')
+  (pop1 = getPopulationData(2002))
+  (pop1 = getPopulationData(2002, 'district'))
+  (pop1 = getPopulationData(2002, 'state'))
+  pop2 = getPopulationData(2021)
+  
+  print('pop and area...')
+  pop = popChange(pop1, pop2)
+  pop = getAreaData(pop, communeShp, data.id = 'id', sf.id = 'id')
+  
+  levelShp = nuts2shp
+  levelShp = levelShp(order)
+  
 }
-
-
