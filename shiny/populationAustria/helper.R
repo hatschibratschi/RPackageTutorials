@@ -2,7 +2,12 @@ rm(list = ls())
 
 # project variables  ------------------------------------------------------
 communeLayerId = uuid::UUIDgenerate()
+communeBorderColor = '#ffffff'  # '#b1b1b1'
+communeLineWidth = 100
+
 regionLayerId = uuid::UUIDgenerate()
+regionBorderColor = '#ffffff' # '#010101'
+regionLineWidth = 500
 
 # functions ---------------------------------------------------------------
 downloadUnZipShp = function(url, shpPath, zipPath, shpDir){
@@ -80,8 +85,8 @@ map = function(){
       , name = 'Population change'
       , data = pop
       , get_polygon = geometry
-      , get_line_width = 100
-      , get_line_color = '#b1b1b1'
+      , get_line_width = get('communeLineWidth')
+      , get_line_color = get('communeBorderColor')
       , get_fill_color = scale_color_category(col = 'cut'
                                               , palette = getColors(pop))
       , pickable = TRUE
@@ -92,8 +97,8 @@ map = function(){
       , data = nuts2shp
       , name = 'regions'
       , get_polygon = geometry
-      , get_line_width = 200
-      , get_line_color = '#010101'
+      , get_line_width = get('regionLineWidth')
+      , get_line_color = get('regionBorderColor')
       , filled = FALSE
     )
   options(warn=0)
@@ -212,6 +217,7 @@ tidySfForRdeck = function(sf){
 }
 
 # load data ---------------------------------------------------------------
+# * load shp data ---------------------------------------------------------
 # commune shp
 communeShp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_GEM_1_STATISTIK_AUSTRIA_20220101.zip'
                      , shpFile = 'STATISTIK_AUSTRIA_GEM_20220101.shp'
@@ -224,6 +230,11 @@ nuts2shp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_NUTS_1_STATIS
 districtShp = loadShp(url = 'https://data.statistik.gv.at/data/OGDEXT_POLBEZ_1_STATISTIK_AUSTRIA_20220101.zip'
                       , shpFile = 'STATISTIK_AUSTRIA_POLBEZ_20220101.shp'
                       , rDataFile = 'districtShp.rdata')
+
+# * init load all population data -----------------------------------------
+if(FALSE){
+  sapply(2011:2019, getPopulationData)
+}
 
 # test --------------------------------------------------------------------
 if (FALSE){
@@ -253,5 +264,4 @@ if (FALSE){
   
   levelShp = nuts2shp
   levelShp = levelShp(order)
-  
 }

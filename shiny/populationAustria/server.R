@@ -62,20 +62,20 @@ shinyServer(function(input, output) {
         , name = paste('Pop', input$years[1], input$years[2])
         , data = pop
         , get_polygon = geometry
-        , get_line_width = 100
-        , get_line_color = '#b1b1b1'
+        , get_line_width = get('communeLineWidth')
+        , get_line_color = get('communeBorderColor')
         , get_fill_color = scale_color_category(col = 'cut'
                                                 , palette = getColors(pop))
         , pickable = TRUE
         , tooltip = c(name, change)
-      )|>
+      ) |>
       add_polygon_layer(
         id = regionLayerId
         , data = newRegion()
         , name = 'regions'
         , get_polygon = geometry
-        , get_line_width = 200
-        , get_line_color = '#010101'
+        , get_line_width = get('regionLineWidth')
+        , get_line_color = get('regionBorderColor')
         , filled = FALSE
       )
   })
