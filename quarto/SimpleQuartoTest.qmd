@@ -1,7 +1,9 @@
 ---
-title: "SimpleQuartoTest"
-format: html
-editor: visual
+title: "Simple Quarto Test"
+format:
+  html:
+    toc: true
+    toc-depth: 3
 ---
 
 ## Quarto
@@ -24,6 +26,8 @@ You can add options to executable code like this
 r = 2^3
 print(r)
 ```
+
+### Inline-code
 
 The `echo: false` option disables the printing of code (only output is displayed).
 
