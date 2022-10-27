@@ -11,15 +11,22 @@ map = rdeck(map_style = NULL
     , get_polygon = geometry
     , get_line_width = 200
     , get_line_color = '#b1b1b1' # lightgray
-    , get_fill_color = '#545454'
+    #, get_fill_color = '#545454'
+    , get_fill_color = scale_color_quantize(
+      col = PERIMETER,
+      palette = viridis(6, 0.8)
+    )
+    
   )
 
 ui = fillPage(
   rdeckOutput("map", height = "100%"),
-  absolutePanel(
-    top = 10, left = 10,
-    sliderInput("range", "value", 0, 1, c(0, 1), step = 0.1)
-  )
+  absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE
+                , draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto"
+                , width = 330, height = "auto"
+                
+                , h2("info")
+                )
 )
 
 # Define server logic required to draw a histogram
