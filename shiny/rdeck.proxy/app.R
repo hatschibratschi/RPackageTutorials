@@ -49,8 +49,10 @@ server <- function(input, output, session) {
   })
   
   checkClick = reactive({
+    print('clicked_object: ')
     o = get_clicked_object('map')
     print(sapply(o, eval))
+    print('clicked_coordinates: ')
     l = get_clicked_coordinates('map')
     print(sapply(l, eval))
   })
