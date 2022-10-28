@@ -25,16 +25,6 @@ ui <- fluidPage(
         max = 50,
         value = 30
       ),
-      # selectInput(
-      #   inputId = "color1",
-      #   label = "Colors to choose",
-      #   choices = c("grey", "lightgrey", "red", "black"),
-      #   selected = "grey",
-      #   multiple = FALSE,
-      #   selectize = TRUE,
-      #   width = NULL,
-      #   size = NULL
-      # ),
       radioButtons(inputId = "color", "Choose color",
                    choices = list("grey" = 'grey', "lightgrey" = 'lightgrey',
                                   "black" = 'black')
@@ -49,7 +39,6 @@ ui <- fluidPage(
       checkboxInput(inputId = "showLine", 
                     label = "Show regression line", 
                     value = FALSE),
-      #h3("Reset"),
       actionButton(inputId = "btnReset", "Reset")
     ),
     
@@ -113,7 +102,6 @@ server <- function(input, output, session) {
     updateNumericInput(session, "eruptions", value = c(min(faithful$eruptions), max(faithful$eruptions)))
     updateRadioButtons(session, "color", selected = 'grey')
     updateCheckboxInput(session, 'showLine', value = FALSE)
-    #updateTextInput(session, "mytext", value = "test")
   }) 
 }
 
