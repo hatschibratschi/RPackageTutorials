@@ -1,0 +1,120 @@
+---
+title: "raster package examples"
+format:
+  html:
+    toc: true
+    code-tools: true
+    code-link: true
+    self-contained: true
+---
+
+## packages
+
+```{r packages}
+library(raster)
+```
+
+## simple raster from file
+
+Let\`s have a look at a very simple example raster from the raster package.
+
+First we have an overview of the raster itself, its size, projection, etc.
+
+Then we plot the raster.
+
+```{r simpleRaster}
+f = system.file("external/test.grd", package="raster")
+r = raster(f);rm(f)
+r
+plot(r)
+```
+
+## Create a raster with data
+
+The most simple way to create a raster is based on matrix data. So first we create a matrix with random data and then we create a raster based on this matrix.
+
+```{r createRasterWithData}
+m = matrix(sample(1:100, 9, TRUE),3)
+m
+r = raster(m)
+r
+
+matrix(getValues(r), nrow(r), ncol(r))
+
+plot(r)
+```
+
+### Add CRS (coordinate reference system) and extent
+
+set extent and crs
+
+```{r addCrs}
+crs = raster::crs('+init=EPSG:4326')
+r = raster::raster(m, crs = crs)
+extent(r) = extent(0,10,0,10)
+r
+```
+
+### Missing values
+
+```{r missingValues}
+m = matrix(sample(1:100, 9, TRUE),3)
+r = raster::raster(m)
+print(object.size(r))
+
+m[1] = NA
+r = raster::raster(m)
+print(object.size(r))
+plot(r)
+
+m[1] = 0
+r = raster::raster(m)
+plot(r)
+```
+
+## Get statistics
+
+Some NA-values are no problem, but when all values are NA you get
+
+`Warning: no non-missing arguments to min`
+
+```{r getStatistics}
+
+m = matrix(sample(1:100, 9, TRUE),3)
+r = raster::raster(m)
+raster::cellStats(r, min)
+raster::cellStats(r, max)
+raster::cellStats(r, mean)
+raster::cellStats(r, median)
+raster::cellStats(r, sd)
+
+m[1:8] = NA
+m
+r = raster::raster(m)
+raster::cellStats(r, min)
+
+m[1:9] = NA
+r = raster::raster(m)
+raster::cellStats(r, min)
+
+```
+
+## Plot multiple rasters at once
+
+We create a list `r` with 4 raster-objects and a simple name for each raster. Then we plot all rasters at once with `layout`, `plot` and `par`.
+
+```{r plotMultipleRasetes}
+r = lapply(1:4, function(x){
+  raster::raster(matrix(sample(1:100, 9, TRUE),3))
+})
+names(r) = paste('raster ', 1:4)
+
+def.par <- par(no.readonly = TRUE) # save default, for resetting...
+layout(matrix(c(1:length(r)),2,2,byrow = TRUE))
+
+for (i in seq_along(r)){
+  plot(r[[i]], main=paste(names(r)[[i]]))
+}
+
+par(def.par)  #- reset to default
+```
