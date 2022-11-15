@@ -1,0 +1,60 @@
+
+---
+title: "Quarto and parallel together"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+---
+
+## libs
+```{r libs}
+library(parallel)
+```
+
+```{r vars}
+x1 = 1
+f1 = function(x) x * 10
+myList = LETTERS[1:10]
+
+source('quartoParallelFunctions.R')
+```
+
+```{r initCluster}
+cores = round(detectCores() * 0.5)
+cluster_log = 'cluster.log'
+cl = makeCluster(cores, outfile = cluster_log)
+clusterExport(cl, varlist = c("x1", 'f1', 'f2')) # add objects to cluster
+```
+Cluster runs with `r cores` cores, log file is here: `r cluster_log`. 
+
+```{r runCluster}
+r = parLapply(cl = cl
+  , X = myList
+  , fun = function(l){
+    print(paste(Sys.time() ))
+    # return
+    paste0(l, f2(x1))
+  }
+)
+unlist(r)
+```
+
+
+```{r runClusterFromFile}
+r = p1(cl, myList)
+unlist(r)
+```
+
+```{r endCluster}
+stopCluster(cl);rm(cl)
+```
+
+```{r runClusterInFile}
+r = runParallel(myList = myList
+            , coresPerCent = 0.5
+            , clusterLog = 'cluster.log'
+            , x1 = x1, f1 = f1, f2 = f2)
+unlist(r)
+```
+
