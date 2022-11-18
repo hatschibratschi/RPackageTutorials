@@ -4,7 +4,7 @@ format: html
 server: shiny
 ---
 
-## First example - “Old Faithful” dataset
+## First example - "Old Faithful" dataset
 
 -   <https://quarto.org/docs/interactive/shiny/#hello-shiny>
 
@@ -30,7 +30,6 @@ numericInput('clusters', 'Cluster count', 3, min = 1, max = 9)
 #| panel: fill
 plotOutput('plot1')
 ```
-
 
 ```{r}
 #| context: server
