@@ -116,5 +116,6 @@ for (i in seq_along(r)){
   plot(r[[i]], main=paste(names(r)[[i]]))
 }
 
+# or with no title
 par(def.par)  #- reset to default
 ```
