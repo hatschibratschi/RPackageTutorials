@@ -13,8 +13,8 @@ map = rdeck(map_style = NULL
     , get_line_color = '#b1b1b1' # lightgray
     #, get_fill_color = '#545454'
     , get_fill_color = scale_color_quantize(
-      col = PERIMETER,
-      palette = viridis(6, 0.8)
+          col = PERIMETER 
+        , palette = viridis(6, 0.8)
     )
     
   )
@@ -22,9 +22,13 @@ map = rdeck(map_style = NULL
 ui = fillPage(
   rdeckOutput("map", height = "100%"),
   absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE
-                , draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto"
-                , width = 330, height = "auto"
-                
+                , draggable = TRUE
+                , top = 60
+                , left = 20
+                , right = "auto"
+                , bottom = "auto"
+                , width = 330
+                , height = "auto"
                 , h2("info")
                 )
 )
