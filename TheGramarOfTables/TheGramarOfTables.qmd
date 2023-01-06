@@ -1,0 +1,107 @@
+---
+title: "The gramar of tables"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-link: true
+    code-copy: true
+    code-fold: false
+---
+
+## libs
+```{r libs}
+library(ggplot2)
+library(readxl)
+library(data.table)
+library(rvest)
+```
+
+
+## data
+### download data
+
+https://www.asfinag.at/verkehr-sicherheit/verkehrszahlung/
+
+Data is stored per year and per month for the current year. 
+
+```{r dlYearlyZipData}
+url = 'https://www.asfinag.at/verkehr-sicherheit/verkehrszahlung/'
+zipFiles <- rvest::read_html(url) %>%
+  rvest::html_elements("a") %>%
+  rvest::html_attr("href") %>%
+  grep('^.*/\\d{4}.*.zip$', ., value = TRUE)
+zipFiles
+
+# download missing files
+zipFiles = grep(pattern = paste0(setdiff(basename(zipFiles[1:3]), list.files(path = 'data')), collapse = '|')
+     , x = zipFiles
+     , value = TRUE)
+zipFiles
+
+if(length(zipFiles) > 0){
+  download.file(url = paste0('https://www.asfinag.at', zipFiles)
+                , destfile = paste0('data/', basename(zipFiles))
+  )
+}
+
+```
+
+```{r loadYearlyDataFromZip}
+# if file is not unzipped yet
+unzip(zipfile = 'data/2021.zip', exdir = 'data/2021')
+
+```
+
+
+```{r dlSingleFile}
+dataFile = 'data/2211_asfinag_verkehrsstatistik.xls'
+if(!file.exists(dataFile)){
+  download.file(url = 'https://www.asfinag.at/media/5xnljusm/2211_asfinag_verkehrsstatistik.xls'
+                , destfile = 'data/2211_asfinag_verkehrsstatistik.xls')
+}
+```
+
+### load data
+
+```{r getData}
+
+xlsFiles = list.files(path = c('data/2020', 'data/2021'), pattern = '^\\d{4}.*.xls$', full.names = TRUE)
+xlsFiles
+
+col_names = c('Autobahn'
+              , 'Station(km)'
+              , 'Zählstellenname'
+              , 'Zählstellennummer'
+              , 'Abschnitt (von - bis)'
+              , 'Richtung'
+              , 'Fahrzeugklasse'
+              , 'DTVMS'
+              , 'DTVMF'
+              , 'DTVMO'
+              , 'DTVDD'
+              , 'DTVFR'
+              , 'DTVSA'
+              ,	'DTVSF'
+              , 'Datengüte')
+
+d.l = lapply(xlsFiles, function(x){
+  d = readxl::read_xls(x
+                  , sheet = 'Daten'
+                  , skip = 3
+                  , col_names = col_names
+                  , na = '-1'
+                  )
+  ## The conversion
+  d[sapply(d, is.character)] = lapply(d[sapply(d, is.character)], 
+                                       as.factor)
+  #setDT(d)
+  d
+})
+
+# sapply(d.l, str)
+# sapply(d.l, summary)
+sapply(d.l, dim)
+
+```
+

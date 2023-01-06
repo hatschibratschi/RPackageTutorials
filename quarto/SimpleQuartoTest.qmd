@@ -4,6 +4,9 @@ format:
   html:
     toc: true
     toc-depth: 3
+    code-link: true
+    code-copy: true
+    code-fold: false
 ---
 
 ## Quarto
