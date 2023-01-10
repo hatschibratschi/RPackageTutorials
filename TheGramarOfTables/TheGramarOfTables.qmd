@@ -15,6 +15,16 @@ library(ggplot2)
 library(readxl)
 library(data.table)
 library(rvest)
+library(stringr)
+library(lubridate)
+library(osmdata)
+
+g = list(
+  d = list(
+    asfinagData = 'asfinagData'
+  )
+)
+
 ```
 
 
@@ -26,48 +36,64 @@ https://www.asfinag.at/verkehr-sicherheit/verkehrszahlung/
 Data is stored per year and per month for the current year. 
 
 ```{r dlYearlyZipData}
+# get all zip-files on the webpage
 url = 'https://www.asfinag.at/verkehr-sicherheit/verkehrszahlung/'
-zipFiles <- rvest::read_html(url) %>%
+zipFilesOnPage <- rvest::read_html(url) %>%
   rvest::html_elements("a") %>%
   rvest::html_attr("href") %>%
-  grep('^.*/\\d{4}.*.zip$', ., value = TRUE)
-zipFiles
+  grep('^.*/.*.zip$', ., value = TRUE)
+zipFilesOnPage
 
-# download missing files
-zipFiles = grep(pattern = paste0(setdiff(basename(zipFiles[1:3]), list.files(path = 'data')), collapse = '|')
-     , x = zipFiles
-     , value = TRUE)
-zipFiles
+# get missing files
+missing = paste0(setdiff(basename(zipFilesOnPage), list.files(path = g$d$asfinagData)), collapse = '|')
 
-if(length(zipFiles) > 0){
-  download.file(url = paste0('https://www.asfinag.at', zipFiles)
-                , destfile = paste0('data/', basename(zipFiles))
+if(!missing[1] == ""){
+  zipFilesDl = grep(pattern = paste0(setdiff(basename(zipFilesOnPage), list.files(path = g$d$asfinagData, pattern = ".*.zip")), collapse = '|')
+                  , x = zipFilesOnPage
+                  , value = TRUE
+  )
+  zipFilesDl
+  download.file(url = paste0('https://www.asfinag.at', zipFilesDl)
+                , destfile = file.path(g$d$asfinagData, basename(zipFilesDl))
   )
 }
 
 ```
 
 ```{r loadYearlyDataFromZip}
-# if file is not unzipped yet
-unzip(zipfile = 'data/2021.zip', exdir = 'data/2021')
+zipFiles = list.files(path = g$d$asfinagData, pattern = ".*.zip")
+zipFiles
+
+# unzip files not unzipped yet
+toUnzip = setdiff(file.path(g$d$asfinagData, str_replace(zipFiles, ".zip$", "")), list.dirs(g$d$asfinagData))
+toUnzip
+
+# unzip
+if(length(toUnzip) > 0){
+  lapply(toUnzip, function(x){
+    unzip(zipfile = paste0(toUnzip, '.zip'), exdir = x)
+    NULL  
+  })
+}
 
 ```
 
 
 ```{r dlSingleFile}
-dataFile = 'data/2211_asfinag_verkehrsstatistik.xls'
-if(!file.exists(dataFile)){
-  download.file(url = 'https://www.asfinag.at/media/5xnljusm/2211_asfinag_verkehrsstatistik.xls'
-                , destfile = 'data/2211_asfinag_verkehrsstatistik.xls')
-}
+# dataFile = 'data/2211_asfinag_verkehrsstatistik.xls'
+# if(!file.exists(dataFile)){
+#   download.file(url = 'https://www.asfinag.at/media/5xnljusm/2211_asfinag_verkehrsstatistik.xls'
+#                 , destfile = 'data/2211_asfinag_verkehrsstatistik.xls')
+# }
 ```
 
 ### load data
 
 ```{r getData}
 
-xlsFiles = list.files(path = c('data/2020', 'data/2021'), pattern = '^\\d{4}.*.xls$', full.names = TRUE)
-xlsFiles
+xlsFiles = list.files(path = g$d$asfinagData, pattern = '^\\d{4}_.*.xls$', full.names = TRUE, recursive = TRUE)
+length(xlsFiles)
+head(xlsFiles)
 
 col_names = c('Autobahn'
               , 'Station(km)'
@@ -85,8 +111,14 @@ col_names = c('Autobahn'
               ,	'DTVSF'
               , 'Datengüte')
 
-d.l = lapply(xlsFiles, function(x){
-  d = readxl::read_xls(x
+
+d = lapply(1:length(xlsFiles), function(x){
+  file = xlsFiles[x]
+  # get the date
+  date = tail(regmatches(file, gregexpr(pattern = '\\d{4}', text = file))[[1]], 1)
+  date = ym(date)
+  print(date)
+  d = readxl::read_xls(file
                   , sheet = 'Daten'
                   , skip = 3
                   , col_names = col_names
@@ -95,13 +127,83 @@ d.l = lapply(xlsFiles, function(x){
   ## The conversion
   d[sapply(d, is.character)] = lapply(d[sapply(d, is.character)], 
                                        as.factor)
-  #setDT(d)
+  setDT(d)
+  d$fileDate = date
   d
 })
 
-# sapply(d.l, str)
-# sapply(d.l, summary)
-sapply(d.l, dim)
+d = rbindlist(d)
+sapply(d, class)
+dim(d)
+table(d$fileDate)
+
+```
+
+```{r getOsmMotorways}
+# https://www.openstreetmap.org/relation/3392503
+motorways = c(
+  'West Autobahn (570798)'
+, 'Süd Autobahn (367339)'
+, 'Südostautobahn (367338)'
+, 'Ostautobahn (194662)'
+, 'Nord Autobahn (239631)'
+, 'Nordost Autobahn (194649)'
+, 'Mühlkreis Autobahn (50574)'
+, 'Innkreis Autobahn (50573)'
+, 'Pyhrn Autobahn (59622)'
+, 'Tauernautobahn (3392526)'
+, 'Karawanken Autobahn (1189465)'
+, 'Inntal Autobahn (23304)'
+, 'Brenner Autobahn (59777)'
+, 'Rheintal/Walgau Autobahn (23247)'
+, 'Wiener Außenring Autobahn (1189163)'
+, 'Donauufer Autobahn (1189496)'
+, 'Südosttangente (1189497)'
+, 'Welser Autobahn (50865)'
+, 'Semmering-Schnellstraße (570478)'
+, 'Arlberg Schnellstraße (23297)'
+, 'Klagenfurter Schnellstraße (964326)'
+, 'Murtal Schnellstraße (1748859)'
+, 'Mattersburger Schnellstraße (12858874)'
+, 'Burgenland Schnellstraße (50308)'
+, 'Nordrand Schnellstraße (239657)'
+, 'Wiener Außenring Schnellstraße (241346)'
+, 'Kremser Schnellstraße (570464)'
+, 'Stockerauer Schnellstraße (1267877)'
+, 'Mühlviertler Schnellstraße (2449567)'
+, 'Brucker Schnellstraße (1748850)'
+, 'Weinviertler Schnellstraße (944672)'
+)
+
+motorways = data.table(name = motorways
+                       , osmID = as.numeric(unlist(regmatches(motorways, gregexpr("[[:digit:]]+", motorways)))))
+motorways
+
+osmList = lapply(motorways$osmID, function(x){
+  print(paste('get osm-data for id', x))
+  osmData <- opq_osm_id(id = x, type = 'relation') %>%
+    opq_string() %>%
+    osmdata_sf()
+  osmData
+})
+
+# dat = osmList[[1]]
+# ggplot() +
+#   geom_sf(data = dat$osm_lines) 
+
+allLines = lapply(osmList, function(x) {
+  if(!is.null(x)){
+    return(x$osm_lines[c("ref")])
+  } else {
+    return(NULL)
+  }
+})
+sapply(allLines, dim)
+allLines[[9]] = dat$osm_lines[c("ref")]
+allLines <- do.call(rbind, allLines)
+
+ggplot() +
+  geom_sf(data = allLines)
 
 ```
 
