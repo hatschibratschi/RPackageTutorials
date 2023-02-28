@@ -2,7 +2,9 @@ library(data.table)
 # Texas Health Care Information Collection (THCIC)
 # Texas Inpatient Public Use Data File (pudf)
 # Hospital Discharge Data Public Use Data File ()
-# https://www.dshs.texas.gov/THCIC/Hospitals/Download.shtm
+# https://www.dshs.texas.gov/texas-health-care-information-collection/health-data-researcher-information/texas-inpatient-public-use
+# bad link https://www.dshs.texas.gov/THCIC/Hospitals/Download.shtm
+
 
 d = fread(file = 'data.table/data/PUDF_base1_1q2016_tab.txt'
           , sep = '\t'
