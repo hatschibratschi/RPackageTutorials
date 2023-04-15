@@ -1,0 +1,165 @@
+---
+title: "Simple Quarto Test"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-link: true
+    code-copy: true
+    code-fold: false
+---
+
+# Links
+
+General infos:
+- https://arrow.apache.org/docs/r/
+
+Code from: 
+- https://rpubs.com/asgr/arrowdataset
+
+# Installation and libs
+
+```{r installationLibs}
+if(FALSE){
+  install.packages("arrow")
+}
+
+library(arrow)
+library(data.table)
+library(dplyr)
+library(foreach)
+library(microbenchmark)
+```
+
+# Test arrow
+## Create test-data
+
+```{r createTestData}
+CSV_dir = paste0(tempdir(),'/CSV_DB/')
+dir.create(CSV_dir)
+
+set.seed(666)
+dummy = foreach(i = 1:100) %do% {
+  tempDT = data.table(let=letters[sample(26,1e3,TRUE)], num=rnorm(1e3), loc=i)
+  fwrite(tempDT, paste0(CSV_dir,'examp_',formatC(i, width=3,flag=0),'.csv')) # files like examp_001.csv 
+}
+list.files(CSV_dir)
+```
+
+## Read data
+
+```{r readData}
+CSV_DB = arrow::open_dataset(CSV_dir, format='csv')
+
+output1 = CSV_DB %>% #output table will be output1, input is the CSV_DB
+  filter(let == 'a') %>% #filter all rows to where let =='a'
+  collect %>% #collect actually creates the result
+  setDT # setDT turns it into a data.table (which I prefer)
+output2 = CSV_DB %>% filter(loc == 2) %>% collect %>% setDT #we put it on one line for compactness
+output3 = CSV_DB %>% filter(num > 0) %>% collect %>% setDT
+
+print(output1)
+print(output2)
+print(output3)
+
+```
+
+## Other operations on the data
+
+```{r subsetting}
+output4 = CSV_DB %>%
+  filter(num > 0, let=='a') %>% #a more complex filter
+  select(num, let) %>% # just num/let columns to be selected (in different order)
+  collect %>% 
+  setDT
+print(output4)
+```
+
+```{r mutating}
+output5 = CSV_DB %>%
+  filter(num > 0, let=='a') %>% #a more complex filter
+  mutate(mut = num*loc) %>% #pretty much any function you like here
+  select(num, loc, mut) %>% #select some columns we care about
+  collect %>%
+  setDT
+
+print(output5)
+```
+# Parquet
+
+For speed (and bigger files) we might want to convert the database to a Parquet backend:
+
+```{r writeParquet}
+Parq_dir = paste0(tempdir(),'/Parq_DB/')
+
+write_dataset(CSV_DB, Parq_dir, format='parquet', partitioning='loc') #partitioning tells it how to split the database
+list.files(Parq_dir)
+
+```
+
+There are 100 folders with the binary files in it
+
+```{r readParquetFiles}
+Parq_DB = open_dataset(Parq_dir, format='parquet')
+print(Parq_DB)
+
+```
+
+```{r readParquetData}
+output1b = Parq_DB %>% #output table will be output1, input is the Parq_DB
+  filter(let == 'a') %>%
+  collect %>% 
+  setDT
+output2b = Parq_DB %>% filter(loc == 2) %>% collect %>% setDT
+output3b = Parq_DB %>% filter(num > 0) %>% collect %>% setDT
+
+print(output1b)
+print(output2b)
+print(output3b)
+```
+
+So, which is faster: csv or parquet?! Let’s see!
+
+```{r benchmark1}
+microbenchmark(
+  {output3 = CSV_DB %>%filter(num > 0) %>% collect %>% setDT},
+  {output3b = Parq_DB %>% filter(num > 0) %>% collect %>% setDT}
+)
+
+```
+
+Where you will see big speedups is if you partition based on what you are likely to search on. Before we used `loc` new `let`. 
+
+```{r repartitioning}
+Parq_dir2 = paste0(tempdir(),'/Parq_DB2/')
+
+write_dataset(CSV_DB, Parq_dir2, format='parquet', partitioning='let')
+Parq_DB2 = open_dataset(Parq_dir2, format='parquet')
+print(Parq_DB2) #should be 101 files, because there will be a parquet metadata file
+
+output1c = Parq_DB2 %>% filter(let == 'a') %>% collect %>% setDT
+output2c = Parq_DB2 %>% filter(loc == 2) %>% collect %>% setDT
+output3c = Parq_DB2 %>% filter(num > 0) %>% collect %>% setDT
+```
+
+```{r benchmark2}
+microbenchmark(
+  {output1 = CSV_DB %>% filter(let == 'a') %>% collect %>% setDT},
+  {output1b = Parq_DB %>% filter(let == 'a') %>% collect %>% setDT},
+  {output1c = Parq_DB2 %>% filter(let == 'a') %>% collect %>% setDT}
+)
+```
+
+# Convert an In-Memory Table to Arrow Dataset
+
+f you already have your target arrow Dataset loaded into an R object then you can directly write this out to an arrow Dataset. This might be the case where you have a machine with a lot of memory, but you want to share the Dataset so people using it with a small memory laptop over an internet connection can still do useful things.
+
+```{r inMemoryToParquet}
+tempDT = data.table(let=letters[sample(26,1e5,TRUE)], num=rnorm(1e5), loc=rep(1:100,each=1e3))
+Parq_dir3 = paste0(tempdir(),'/Parq_DB3/')
+
+write_dataset(tempDT, Parq_dir3, format='parquet', partitioning=c('let','loc'))
+Parq_DB3 = open_dataset(Parq_dir3, format='parquet')
+print(Parq_DB3) #should be 101 files, because there will be a parquet metadata file
+```
+
